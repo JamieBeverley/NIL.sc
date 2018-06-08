@@ -1,0 +1,31 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]
+then
+  echo "Provide a path to a folder containing .wav's to be analyzed. A JSON file will be written to supercollider/Units/high-level-features/<basename of folder provided>.json"
+  exit 1
+fi
+
+if [ $1 == "-h"  ]
+then
+  echo "Provide a path to a folder containing .wav's to be analyzed. A JSON file will be written to supercollider/Units/high-level-features/<basename of folder provided>.json"
+  exit 1
+fi
+
+echo "Conducting meyda analysis..."
+for filename in $1*.wav; do
+    # for ((i=0; i<=3; i++)); do
+    #     ./MyProgram.exe "$filename" "Logs/$(basename "$filename" .txt)_Log$i.txt"
+    # done
+    f=$(basename -- "$fullfile")
+    e="${filename##*.}"
+    f="${filename%.*}"
+    # echo $f.json
+    meyda $filename loudness spectralCentroid amplitudeSpectrum rms spectralFlatness --o=$f.json --format=json
+done
+
+echo "Conducting high-level feature analysis"
+
+f=$(basename $1)
+# node javascript/high-level-analyze/high-level-analyze.js $1 supercollider/Units/high-level-features/$f.json
+node high-level-analyze/high-level-analyze.js $1 corpus/$f.json

@@ -21,6 +21,7 @@ Grain {
 		this.buffer=buffer;
 	}
 
+	// Not actually euclidean distance for efficiency purposes...
 	*euclideanDistance {
 		|u,v|
 		var r=0;
@@ -30,12 +31,19 @@ Grain {
 			(" - v: "++v.features.keys++" - class: ").postln;
 			Error.throw("Keys must macth to determine euclidean difference");
 		});
+		/*		u.features.keys.do{
+		|i|
+
+		r = r+pow((u.features[i])-(v.features[i]),2);
+		};
+		^ sqrt(r);*/
 		u.features.keys.do{
 			|i|
 
-			r = r+pow((u.features[i])-(v.features[i]),2);
+			r = r+((u.features[i]-v.features[i]).abs);
 		};
-		^ sqrt(r);
+
+		^ r;
 	}
 
 	postln{
@@ -76,7 +84,7 @@ Grain {
 				|val,nm|
 				if(nm==7,{
 					vals[6]=(val*Server.default.options.numOutputBusChannels/127).floor.clip(0,Server.default.options.numOutputBusChannels-1);},{
-						vals[nm-1] = val/127
+					vals[nm-1] = val/127
 				});
 
 				Grain.findClosestGrain(Grain(dict),list:Grain.corpus[corpusID]).play(out, amp);
@@ -84,6 +92,42 @@ Grain {
 			});// End MIDIdef
 		});
 
+	}
+
+	// Starts somewhere random in the corpus, first grain it finds
+	// that exists in the tolerance range (a number btwn 0-1) it
+	// returns. If nothing in tolerance range, returns closest thing
+	*findCloseEnoughGrain{
+		|target, list, tolerance = 0.05| //default 5% tolerance
+		var offset = list.size.rand;
+		var currentClosestGrain = list[0];
+		var minDist = target.features.keys.size;
+		var tolerantGrain;
+		var result;
+		tolerance = tolerance * target.features.keys.size; // scale to max distance
+		block{
+			|break|
+			list.size.do{
+				|i|
+				var dist = Grain.euclideanDistance(list[(i+offset)%list.size],target);
+				if(dist<=tolerance,{
+					tolerantGrain = list[(i+offset)%list.size];
+					break.value(-1);
+				},{
+					if(dist<minDist,{
+						minDist = dist;
+						currentClosestGrain = list[(i+offset)%list.size];
+					});
+				});
+			};
+		};
+
+		if(tolerantGrain.isNil,{
+			tolerantGrain = currentClosestGrain;
+			"No grain found in tolerance range..might want to increase tolerance".warn;
+		});
+
+		^tolerantGrain;
 	}
 
 
@@ -126,12 +170,10 @@ Grain {
 
 				var i = files[key].collect({|i| i.asFloat}); // dict from "feature"->Value
 				var buffer = Buffer.read(Server.default,path:key,action:{
-					("##### "+key+" "+index).postln;
+					// ("##### "+key+" "+index).postln;
 
 
 					Grain.corpus[corpusIDKey] = Grain.corpus[corpusIDKey].add(Grain(features:i,path:key,buffer:buffer));
-					key.post;
-					" @@@@@@ ".post;
 				});
 
 			};
